@@ -3,18 +3,12 @@ import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Scanner;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.*;
 
 public class Paralleelarvutaja implements Runnable { // Paralleelarvutusprogramm, mis loeb ja töötleb paralleelselt mitut sisendfaili
 
-    // järjekord, mille kaudu ülesandeid vastu võetakse
-    private BlockingQueue<String> failiNimed;
-
-    // järjekord, mille kaudu lahendused tagasi saadetakse
-    private BlockingQueue<TulemuseHoidja> failiInfo;
+    private BlockingQueue<String> failiNimed; // järjekord, mille kaudu ülesandeid vastu võetakse
+    private BlockingQueue<TulemuseHoidja> failiInfo; // järjekord, mille kaudu lahendused tagasi saadetakse
 
     public Paralleelarvutaja(BlockingQueue<String> failiNimed, BlockingQueue<TulemuseHoidja> failiInfo) {
         this.failiNimed = failiNimed;
@@ -28,30 +22,31 @@ public class Paralleelarvutaja implements Runnable { // Paralleelarvutusprogramm
         //    Igas failis on vähemalt üks arv. Failid ja ka üksikud read võivad olla nii suured, et need ei mahu korraga mälusse ära.
         //
         //    Arvud võivad olla suuremad, kui mahub long tüüpi muutujasse. Sellega hakkama saamiseks peab programm kasutama arvude hoidmiseks BigInteger klassi.
-        //
 
-        this.failiNimed.forEach(nimi -> {
-            Scanner scanner = null;
-            BigInteger summa = BigInteger.valueOf(0); // leitakse kõikide arvude kogusumma; algväärtus 0
-            BigInteger suurimArv = BigInteger.valueOf(0); // leitakse suurm arv; algväärtus 0
-            try {
-                scanner = new Scanner(new File(nimi));
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            }
+        while (true) {
+            // proovime järgmise ülesande vastu võtta
+            String failiNimi = this.failiNimed.poll(); // proovitakse järgmist failinime lugeda
+            if (failiNimi == null)
+                break; // ülesanded said otsa, lõpetame töö
 
-            while (scanner.hasNext()) {
-                BigInteger vaadeldavArv = new BigInteger(scanner.next());
-                summa = summa.add(vaadeldavArv); // arv liidetakse kogusummale
+            BigInteger summa = BigInteger.ZERO; // leitakse kõikide arvude kogusumma; algväärtus null
+            BigInteger suurimArv = null; // leitakse suurm arv; algväärtus 0
 
-                if (vaadeldavArv.compareTo(suurimArv) == 1) suurimArv = vaadeldavArv; // kui vaadeldav arv on seni leitud suurimast suurem, siis määratakse see uueks suurimaks
-            }
-            scanner.close();
+            try (Scanner scanner = new Scanner(new File(failiNimi))){ // faililugeja algväärtustamine TWR-blokis
+                while (scanner.hasNextBigInteger()) {
+                    BigInteger vaadeldavArv = scanner.nextBigInteger();
+                    summa = summa.add(vaadeldavArv); // arv liidetakse kogusummale
 
-            this.failiInfo.add(new TulemuseHoidja(nimi, // lisatakse töödeldud faili nimi,
-                                                suurimArv, // selle faili suurim üksik arv
-                                                summa)); // ja kõigi arvude summa
-        });
+                    if (suurimArv == null) suurimArv = vaadeldavArv; // kui summa on null ehk tühi, siis määratakse selle väärtuseks vaadeldav arv
+                    else if (vaadeldavArv.compareTo(suurimArv) == 1) suurimArv = vaadeldavArv; // kui vaadeldav arv on seni leitud suurimast suurem, siis määratakse see uueks suurimaks
+                }
+
+            } catch (FileNotFoundException e) {throw new RuntimeException(e);}
+
+            this.failiInfo.add(new TulemuseHoidja(failiNimi, // lisatakse töödeldud faili nimi,
+                    suurimArv, // selle faili suurim üksik arv
+                    summa)); // ja kõigi arvude summa
+        }
     }
 }
 
@@ -65,17 +60,11 @@ class TulemuseHoidja {
         this.elementideSumma = elementideSumma;
     }
 
-    public String getFailiNimi() {
-        return failiNimi;
-    }
+    public String getFailiNimi() {return failiNimi;}
 
-    public BigInteger getMaxElement() {
-        return maxElement;
-    }
+    public BigInteger getMaxElement() {return maxElement;}
 
-    public BigInteger getElementideSumma() {
-        return elementideSumma;
-    }
+    public BigInteger getElementideSumma() {return elementideSumma;}
 }
 class Test {
     public static void main(String[] argsx) {
@@ -88,25 +77,42 @@ class Test {
 
         // Programm peab failide töötlemiseks looma protsessorituumadega võrdse arvu threade (workerid).
         int cores = Runtime.getRuntime().availableProcessors(); // leitakse protsessorituumade arv
-        ThreadFactory threadFactory = Executors.defaultThreadFactory(); // luuakse ThreadFactory
+        ExecutorService executor = Executors.newFixedThreadPool(cores); // luuakse nii palju lõimi, nagu on protsessoril tuumi
 
-        // Mustri allikas: https://www.geeksforgeeks.org/threadfactory-interface-in-java-with-examples/
-        for (int i = 0; i < cores; i++) { // luuakse lõimed
+        BlockingQueue<String> failiNimed = new ArrayBlockingQueue<>(args.length); // luuakse ühine BlockingQueue, millest kõik workerid töötlemist vajavate failide nimesid võtavad
+        BlockingQueue<TulemuseHoidja> failiInfo = new ArrayBlockingQueue<>(args.length); // luuakse ühine BlockingQueue, kuhu workerid iga faili kohta järgneva komplekti lisavad: töödeldud faili nimi, selle faili suurim üksik arv ja kõigi arvude summa
+        failiNimed.addAll(List.of(args));
 
-            BlockingQueue<String> failiNimed = new ArrayBlockingQueue<>(args.length); // luuakse ühine BlockingQueue, millest kõik workerid töötlemist vajavate failide nimesid võtavad
-            BlockingQueue<TulemuseHoidja> failiInfo = new ArrayBlockingQueue<>(args.length); // luuakse ühine BlockingQueue, kuhu workerid iga faili kohta järgneva komplekti lisavad: töödeldud faili nimi, selle faili suurim üksik arv ja kõigi arvude summa
-            failiNimed.addAll(List.of(args));
-
-            Thread thread = threadFactory.newThread(new Paralleelarvutaja(failiNimed, failiInfo));
-            thread.start(); // lõime käivitamine
+        for (int i = 0; i < cores; i++) {
+            executor.submit(new Paralleelarvutaja(failiNimed, failiInfo));
         }
+        executor.shutdown(); // lõimede sulgemine
+
+        try {
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS); // operatsioonid toimuvad peale kõigi lõimede töö lõppemist
+
+            final BigInteger[] kogusumma = {BigInteger.ZERO};
+            TulemuseHoidja thMaxVaartusFail = null;
+            TulemuseHoidja thMinKogusummaFail = null;
 
 
-        //    Programmi lõppedes peab main threadist ekraanile väljastama:
+            for (TulemuseHoidja th: failiInfo) {
+                kogusumma[0] = kogusumma[0].add(th.getElementideSumma()); // kõigi failide summad liidetakse kokku
 
-        //    Kõikide leitud arvude kogusumma
-        //    Kõige suurema leitud üksiku arvu väärtuse ja vastava faili nime
-        //    Kõige väiksema arvude summaga faili nime
+                // kui summa on null ehk tühi, siis määratakse selle väärtuseks vaadeldav objekt; kui vaadeldav objekt on seni leitud suurimast suurem, siis määratakse see uueks suurimaks
+                if ((thMaxVaartusFail == null) || (th.getMaxElement().compareTo(thMaxVaartusFail.getMaxElement()) == 1)) thMaxVaartusFail = th;
 
+                // kui summa on null ehk tühi, siis määratakse selle väärtuseks vaadeldav objekt; kui vaadeldav objekt on seni leitud vähimast väiksem, siis määratakse see uueks vähimaks
+                if ((thMinKogusummaFail == null) || (th.getElementideSumma().compareTo(thMinKogusummaFail.getElementideSumma()) == -1)) thMinKogusummaFail = th;
+
+            }
+
+            System.out.println("Elementide kogusumma: " + kogusumma[0]); // Kõikide leitud arvude kogusumma
+            System.out.println("Kõige suurem leitud üksiku arvu väärtus: " + thMaxVaartusFail.getMaxElement() + " " + thMaxVaartusFail.getFailiNimi()); // Kõige suurema leitud üksiku arvu väärtuse ja vastava faili nime
+            System.out.println("Kõige väiksema arvude summaga faili nimi: " + thMinKogusummaFail.getFailiNimi()); // Kõige väiksema arvude summaga faili nime
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.out.println("Interrupted while waiting for completion.");
+        }
     }
 }
