@@ -1,7 +1,11 @@
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 
 public class Client {
@@ -22,19 +26,36 @@ public class Client {
 
             out.writeUTF("length:" + argsMap.size()); // Client saadab kõigepealt serverile requestide koguarvu; kõik variable length andmed peaks algama length prefixiga.
 
-            argsMap.forEach((key, value) -> {
+            String receivedDirPath = System.getProperty("user.dir") + File.separator + "received"; // luuakse väljundkausta aadress
+            Path path = Paths.get(receivedDirPath); // aadressiga luuakse Path objekt
 
+            try {Files.createDirectories(path);} // kui kausta ei eksisteeri, siis see luuakse;m uul juhul ei tehta midagi
+            catch (IOException e) {System.err.println("Kasuta ei saanud luua " + e.getMessage());} // kui kausta pole võimalik luua, väljastatkse veateade
+
+            argsMap.forEach((key, value) -> {
                 int requestType = 0; // vaikimisi on päringu tüüp 0 (echo)
 
-                // Iga request peaks algama arvuga, mis näitab requesti tüüpi.
                 if (value.equals("file")) requestType = 1; // kui tahetakse failitöötlust, siis on päringu tüüp 1 (file)
                 try {
-                    out.writeUTF(requestType + " " + key); // Socketile saadetakse sõne kujul päringu tüüp + tühik + sõne (failinimi/ekraanile väljastatav sõne)
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                try {
-                    System.out.println(in.readUTF()); // Socket saadab sõne tagasi ja see väljastatakse ekraanile
+                    out.writeInt(requestType); // Socketile saadetakse sõne kujul päringu tüüp (täisarv)
+                    out.writeUTF(key); // Socketile saadetakse sõne (failinimi/ekraanile väljastatav sõne)
+
+                    int responseType = in.readInt(); // loetakse vastuse tüüp
+
+                    if ((requestType == 0) && (responseType != 400)) { // kui tegemist on sõnega, siis see väljastatakse ekraanile
+                        String responseContent = in.readUTF(); // Socket saadab sõne tagasi ja see väljastatakse ekraanile
+                        System.out.println(responseContent);
+                    }
+                    else if ((requestType == 1) && (responseType != 400)) { // kui tegemist on failiga, siis salvestatakse sisu kausta "received"
+                        int fileSize = in.readInt(); // Sockets tagastab faili suuruse
+                        byte[] fileContent = new byte[fileSize]; // luuakse uus bbaidimassiiv faili sisu hoidmiseks
+                        in.readFully(fileContent); // loetakse faili sisu
+
+                        Files.write(Path.of(path + File.separator + key), fileContent); // faili susu kirjutatakse kausta
+                    }
+
+                    else System.out.println("Tundmatu päringu tüüp!"); // muul juhul väljastatakse veateade
+
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
@@ -51,3 +72,4 @@ public class Client {
         return argsMap;
     }
 }
+
