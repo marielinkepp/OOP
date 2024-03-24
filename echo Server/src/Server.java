@@ -23,7 +23,7 @@ public class Server {
 }
 
 class MultiThreadSocketManager implements Runnable {
-    private Socket clientSocket;
+    private final Socket clientSocket;
 
     public MultiThreadSocketManager(Socket socket) {
         this.clientSocket = socket;
@@ -32,7 +32,7 @@ class MultiThreadSocketManager implements Runnable {
     @Override
     public void run() {
         // luuakse DataInputStream ja DataOutputStream: in saab Client klassilt sisendi ja out saadab selle klassile tagasi
-        try (Socket autoSocket = this.clientSocket; DataInputStream in = new DataInputStream(clientSocket.getInputStream());
+        try (clientSocket; DataInputStream in = new DataInputStream(clientSocket.getInputStream());
              DataOutputStream out = new DataOutputStream(clientSocket.getOutputStream())) {
 
             int messageAmount = Integer.parseInt(in.readUTF().split("length:")[1]); // Server võtab ühenduse vastu ja loeb requestide arvu (int).

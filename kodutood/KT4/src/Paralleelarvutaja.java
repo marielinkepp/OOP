@@ -91,13 +91,13 @@ class Test {
         try {
             executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS); // operatsioonid toimuvad peale kõigi lõimede töö lõppemist
 
-            final BigInteger[] kogusumma = {BigInteger.ZERO};
+            BigInteger kogusumma = BigInteger.ZERO;
             TulemuseHoidja thMaxVaartusFail = null;
             TulemuseHoidja thMinKogusummaFail = null;
 
 
             for (TulemuseHoidja th: failiInfo) {
-                kogusumma[0] = kogusumma[0].add(th.getElementideSumma()); // kõigi failide summad liidetakse kokku
+                kogusumma.add(th.getElementideSumma()); // kõigi failide summad liidetakse kokku
 
                 // kui summa on null ehk tühi, siis määratakse selle väärtuseks vaadeldav objekt; kui vaadeldav objekt on seni leitud suurimast suurem, siis määratakse see uueks suurimaks
                 if ((thMaxVaartusFail == null) || (th.getMaxElement().compareTo(thMaxVaartusFail.getMaxElement()) == 1)) thMaxVaartusFail = th;
@@ -107,7 +107,7 @@ class Test {
 
             }
 
-            System.out.println("Elementide kogusumma: " + kogusumma[0]); // Kõikide leitud arvude kogusumma
+            System.out.println("Elementide kogusumma: " + kogusumma); // Kõikide leitud arvude kogusumma
             System.out.println("Kõige suurem leitud üksiku arvu väärtus: " + thMaxVaartusFail.getMaxElement() + " " + thMaxVaartusFail.getFailiNimi()); // Kõige suurema leitud üksiku arvu väärtuse ja vastava faili nime
             System.out.println("Kõige väiksema arvude summaga faili nimi: " + thMinKogusummaFail.getFailiNimi()); // Kõige väiksema arvude summaga faili nime
         } catch (InterruptedException e) {
