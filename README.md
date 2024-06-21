@@ -2,10 +2,10 @@
 
 ### Tavarühma praktikumid
 
- Praktikum       | Teema(d)                                                | Antud allikad                                                                                                              | Tehtud ülesanded                                                                                                                      | Kommentaarid
------------------|---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------| --
- Praks 2 (26.03) | Classpath, resource loading                             | https://github.com/mbakhoff/classpath-template                                                                             |                                                                                    |
- Praks 7 (02.04  | Serialization, JSON, XML                                | https://github.com/Zukkari/java-serialization-template                                                                     |                                                                                              |
+ Praktikum       | Teema(d)                                                | Antud allikad                                                                                                              | Tehtud ülesanded                                                               | Kommentaarid
+-----------------|---------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------| --
+ Praks 2 (26.03) |                              |                                                                  | [Pr2](praktikumid/pr2)                                                         |
+ Praks 7 (02.04  |                                |                                                             | [Pr7](praktikumid/pr7)                                                         |
  Praks 9 (12.03) | Graafika                                                | https://courses.cs.ut.ee/2024/OOP/spring/Main/Practice7                                                                    | [Gradle projekt harjutustega](praktikumid/mustruut-gradle/mustruut-gradle.zip) | 
  | Sündmused       | https://courses.cs.ut.ee/2024/OOP/spring/Main/Practice8 | ) |                                                                                                         
 
