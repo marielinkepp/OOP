@@ -1,0 +1,6 @@
+Lenovo;kiirtöö@2024-04-21T14:22:42
+ML;kiirtöö;monitoriga@2024-04-21T14:08:09
+Ordi;tavatöö@2024-04-21T12:56:11
+Lenovo;tavatöö@2024-04-21T12:12:12
+iMac;tavatöö;monitoriga
+Dell;tavatöö
